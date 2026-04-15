@@ -20,53 +20,23 @@ tfoot td { font-weight:bold; background:#f1f1f1; }
 input { width:95%; height:36px; text-align:center; border:none; font-size:16px; }
 canvas { width:30% !important; height:25% !important; display:block; margin:auto; }
 
-body.exporting button, body.exporting select { display:none; }
+body.exporting button,
+body.exporting select { display:none; }
 
 #monthPrint { display:none; text-align:center; font-weight:bold; margin-bottom:5px; font-size:16px; }
 
-@media print {
-  #monthPrint { display:block; }
-}
-
-/* 📱 Mobile Responsive */
-@media (max-width: 768px){
-
+/* 📱 Mobile */
+@media (max-width:768px){
   h2 { font-size:18px; text-align:center; }
-
-  .card { padding:8px; }
-
-  button {
-    width:100%;
-    margin:5px 0;
-    font-size:14px;
-  }
-
-  input {
-    font-size:14px;
-    height:32px;
-  }
-
-  table {
-    font-size:12px;
-  }
-
-  th, td {
-    padding:4px;
-  }
-
-  canvas {
-    width:100% !important;
-    height:auto !important;
-  }
-
-  .card table {
-    display:block;
-    overflow-x:auto;
-    white-space:nowrap;
-  }
+  button { width:100%; margin:5px 0; }
+  input { font-size:14px; height:32px; }
+  table { font-size:12px; }
+  th, td { padding:4px; }
+  canvas { width:100% !important; height:auto !important; }
 }
 </style>
 </head>
+
 <body>
 
 <div id="captureArea">
@@ -96,7 +66,9 @@ body.exporting button, body.exporting select { display:none; }
 <th>Her</th><th>$</th>
 </tr>
 </thead>
+
 <tbody id="rows"></tbody>
+
 <tfoot>
 <tr>
 <td>Total</td><td id="f">$0.00</td>
@@ -126,61 +98,44 @@ body.exporting button, body.exporting select { display:none; }
 const cols=["family","car","my","her"];
 const tbody=document.getElementById("rows");
 
-// Month print
+// Month
 const monthPicker=document.getElementById("monthPicker");
 const monthPrint=document.getElementById("monthPrint");
 
 monthPicker.addEventListener("change",()=>{
   const val=monthPicker.value;
   if(val){
-    const [y,m]=val.split("-");
+    const [y]=val.split("-");
     const monthName=new Date(val+"-01").toLocaleString("default",{month:"long"});
     monthPrint.innerText=monthName+" "+y;
-  } else { monthPrint.innerText=""; }
+  } else monthPrint.innerText="";
 
-  load(); // ✅ load per month
+  load();
 });
 
-// Add row
+// Add Row
 function addRow(data=[]){
   let tr=document.createElement("tr");
   tr.innerHTML=`
-<td><input></td><td><input class="family" inputmode="decimal"></td>
-<td><input></td><td><input class="car" inputmode="decimal"></td>
-<td><input></td><td><input class="my" inputmode="decimal"></td>
-<td><input></td><td><input class="her" inputmode="decimal"></td>`;
+<td><input></td><td><input class="family"></td>
+<td><input></td><td><input class="car"></td>
+<td><input></td><td><input class="my"></td>
+<td><input></td><td><input class="her"></td>`;
   tbody.appendChild(tr);
 
   const inputs=tr.querySelectorAll("input");
+
   inputs.forEach((i,idx)=>{
     if(data[idx]) i.value=data[idx];
 
     i.addEventListener("input",()=>{
-      if(cols.some(c=>i.classList.contains(c))){
-        i.value=i.value.replace(/[^0-9.]/g,'');
-      }
-      calculate();
-      save();
-    });
-
-    i.addEventListener("keydown",(e)=>{
-      const allInputs=[...document.querySelectorAll("input")];
-      const index=allInputs.indexOf(i);
-
-      if(e.key==="Enter"){
-        e.preventDefault();
-        if(allInputs[index+8]) allInputs[index+8].focus();
-        else { addRow(); tbody.lastChild.querySelectorAll("input")[idx].focus(); }
-      }
-      if(e.key==="ArrowRight" && allInputs[index+1]) allInputs[index+1].focus();
-      if(e.key==="ArrowLeft" && allInputs[index-1]) allInputs[index-1].focus();
-      if(e.key==="ArrowDown" && allInputs[index+8]) allInputs[index+8].focus();
-      if(e.key==="ArrowUp" && allInputs[index-8]) allInputs[index-8].focus();
+      i.value=i.value.replace(/[^0-9.]/g,'');
+      calculate(); save();
     });
   });
 }
 
-// Remove row
+// Remove Row
 function removeRow(){
   if(tbody.lastChild) tbody.removeChild(tbody.lastChild);
   calculate(); save();
@@ -189,8 +144,11 @@ function removeRow(){
 // Calculate
 function calculate(){
   let t={family:0,car:0,my:0,her:0};
+
   cols.forEach(c=>{
-    document.querySelectorAll("."+c).forEach(i=> t[c]+=parseFloat(i.value)||0 );
+    document.querySelectorAll("."+c).forEach(i=>{
+      t[c]+=parseFloat(i.value)||0;
+    });
   });
 
   f.innerText="$"+t.family.toFixed(2);
@@ -213,53 +171,69 @@ function save(){
     data.push([...tr.querySelectorAll("input")].map(i=>i.value));
   });
 
-  let key="data_"+(monthPicker.value || "default");
+  let key="data_"+(monthPicker.value||"default");
   localStorage.setItem(key,JSON.stringify(data));
 }
 
-// Load per month
+// Load
 function load(){
-  let key="data_"+(monthPicker.value || "default");
+  let key="data_"+(monthPicker.value||"default");
   let d=JSON.parse(localStorage.getItem(key)||"[]");
 
   tbody.innerHTML="";
-
   if(d.length===0){
     for(let i=0;i<8;i++) addRow();
-  } else {
-    d.forEach(r=>addRow(r));
-  }
+  } else d.forEach(r=>addRow(r));
 
   calculate();
 }
 
-// IMAGE
+// 📸 IMAGE FIX (same as desktop)
 function downloadImage(){
+  const el=document.getElementById("captureArea");
+  const oldWidth=el.style.width;
+
   document.body.classList.add("exporting");
+  el.style.width="1200px";
+
   setTimeout(()=>{
-    html2canvas(document.getElementById("captureArea"),{scale:2,backgroundColor:"#fff"})
-    .then(c=>{
+    html2canvas(el,{scale:2,backgroundColor:"#fff"}).then(canvas=>{
+      el.style.width=oldWidth;
       document.body.classList.remove("exporting");
+
       let a=document.createElement("a");
       a.download="report.png";
-      a.href=c.toDataURL();
+      a.href=canvas.toDataURL();
       a.click();
     });
-  },500);
+  },300);
 }
 
-// PDF
+// 📄 PDF FIX (same as desktop)
 async function downloadPDF(){
+  const el=document.getElementById("captureArea");
+  const oldWidth=el.style.width;
+
   document.body.classList.add("exporting");
+  el.style.width="1200px";
+
   setTimeout(async ()=>{
-    const canvas=await html2canvas(document.getElementById("captureArea"),{scale:2});
+    const canvas=await html2canvas(el,{scale:2,backgroundColor:"#fff"});
+
+    el.style.width=oldWidth;
+    document.body.classList.remove("exporting");
+
     const img=canvas.toDataURL("image/png");
     const { jsPDF } = window.jspdf;
+
     const pdf=new jsPDF("p","mm","a4");
-    pdf.addImage(img,"PNG",0,0,210,297);
+
+    const w=210;
+    const h=canvas.height*w/canvas.width;
+
+    pdf.addImage(img,"PNG",0,0,w,h);
     pdf.save("report.pdf");
-    document.body.classList.remove("exporting");
-  },500);
+  },300);
 }
 
 // Chart
@@ -267,9 +241,9 @@ let chart=new Chart(document.getElementById("chart"),{
   type:"doughnut",
   data:{
     labels:["Family","Car","My","Her"],
-    datasets:[{data:[0,0,0,0], backgroundColor:['#4e73df','#e74a3b','#1cc88a','#f6c23e']}]
+    datasets:[{data:[0,0,0,0],backgroundColor:['#4e73df','#e74a3b','#1cc88a','#f6c23e']}]
   },
-  options:{ plugins:{ legend:{ position:'bottom' }}, cutout:'60%' }
+  options:{plugins:{legend:{position:"bottom"}},cutout:"60%"}
 });
 
 // Init
