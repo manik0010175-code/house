@@ -29,16 +29,22 @@ canvas { width:30% !important; height:25% !important; display:block; margin:auto
 
 body.exporting button { display:none; }
 
-/* 📱 IMPORTANT FIX → Mobile same as laptop table */
+/* 📱 Mobile fix (no cut, laptop style) */
 @media (max-width:768px){
+  .card{
+    overflow-x:auto;
+  }
+
   table{
-    font-size:14px;
+    min-width:700px;
   }
+
   th,td{
-    padding:6px;
+    white-space:nowrap;
   }
-  input{
-    font-size:14px;
+
+  button{
+    width:100%;
   }
 }
 </style>
@@ -57,7 +63,7 @@ body.exporting button { display:none; }
 <div class="card" style="text-align:center;">
 <button onclick="addRow()">➕ Add Row</button>
 <button onclick="removeRow()">➖ Remove Row</button>
-<button onclick="downloadImage()">📸 Image</button>
+<button onclick="downloadImage()">📸 Download Images</button>
 </div>
 
 <div class="card">
@@ -102,7 +108,7 @@ body.exporting button { display:none; }
 const cols=["family","car","my","her"];
 const tbody=document.getElementById("rows");
 
-// ➕ Add row
+// ➕ Add Row
 function addRow(data=[]){
   let tr=document.createElement("tr");
   tr.innerHTML=`
@@ -117,15 +123,17 @@ function addRow(data=[]){
 
     i.addEventListener("input",()=>{
       i.value=i.value.replace(/[^0-9.]/g,'');
-      calculate(); save();
+      calculate();
+      save();
     });
   });
 }
 
-// ➖ Remove row
+// ➖ Remove Row
 function removeRow(){
   if(tbody.lastChild) tbody.removeChild(tbody.lastChild);
-  calculate(); save();
+  calculate();
+  save();
 }
 
 // 📊 Calculate
@@ -143,9 +151,9 @@ function calculate(){
   m.innerText="$"+t.my;
   h.innerText="$"+t.her;
 
-  let gtotal=t.family+t.car+t.my+t.her;
-  g.innerText="$"+gtotal;
-  w.innerText="$"+(gtotal-t.car);
+  let total=t.family+t.car+t.my+t.her;
+  g.innerText="$"+total;
+  w.innerText="$"+(total-t.car);
 
   chart.data.datasets[0].data=[t.family,t.car,t.my,t.her];
   chart.update();
@@ -164,31 +172,30 @@ function save(){
 function load(){
   let d=JSON.parse(localStorage.getItem("exp")||"[]");
   tbody.innerHTML="";
-  if(d.length===0) for(let i=0;i<6;i++) addRow();
-  else d.forEach(r=>addRow(r));
+  if(d.length===0){
+    for(let i=0;i<6;i++) addRow();
+  } else d.forEach(r=>addRow(r));
   calculate();
 }
 
-// 📸 ONLY FIXED IMAGE EXPORT
+// 📸 DOWNLOAD → 2 IMAGES (TABLE + CHART)
 async function downloadImage(){
 
   document.body.classList.add("exporting");
 
-  const tableArea = document.querySelector("table").parentElement;
-  const chartArea = document.getElementById("chart");
+  const tableEl = document.querySelector("table").parentElement;
+  const chartEl = document.getElementById("chart");
 
-  // 📋 TABLE (laptop style same)
-  const tableCanvas = await html2canvas(tableArea,{
+  // 📋 TABLE IMAGE (laptop look)
+  const tableCanvas = await html2canvas(tableEl,{
     scale:2,
-    backgroundColor:"#fff",
-    useCORS:true
+    backgroundColor:"#fff"
   });
 
-  // 📊 CHART
-  const chartCanvas = await html2canvas(chartArea,{
+  // 📊 CHART IMAGE
+  const chartCanvas = await html2canvas(chartEl,{
     scale:2,
-    backgroundColor:"#fff",
-    useCORS:true
+    backgroundColor:"#fff"
   });
 
   document.body.classList.remove("exporting");
