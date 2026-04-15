@@ -165,7 +165,7 @@ function addRow(data=[]){
       save();
     });
 
-    // ⬇️ Arrow + Enter navigation
+    // ⌨️ Keyboard navigation (UNCHANGED)
     i.addEventListener("keydown", (e) => {
 
       const currentRow = i.closest("tr");
@@ -252,7 +252,7 @@ function load(){
   calculate();
 }
 
-// 📸 Image Export
+// 📸 FIXED IMAGE DOWNLOAD (ONLY FIX)
 async function downloadImage(){
 
   document.body.classList.add("exporting");
@@ -260,22 +260,27 @@ async function downloadImage(){
   const table = document.getElementById("tableArea");
   const chart = document.getElementById("chartArea");
 
+  await new Promise(r=>setTimeout(r,250));
+
   const tableCanvas = await html2canvas(table,{scale:2,backgroundColor:"#fff"});
+
+  await new Promise(r=>setTimeout(r,250));
+
   const chartCanvas = await html2canvas(chart,{scale:2,backgroundColor:"#fff"});
 
   document.body.classList.remove("exporting");
 
-  let a1=document.createElement("a");
+  const a1=document.createElement("a");
   a1.download="table.png";
   a1.href=tableCanvas.toDataURL("image/png");
   a1.click();
 
-  setTimeout(()=>{
-    let a2=document.createElement("a");
-    a2.download="chart.png";
-    a2.href=chartCanvas.toDataURL("image/png");
-    a2.click();
-  },800);
+  await new Promise(r=>setTimeout(r,400));
+
+  const a2=document.createElement("a");
+  a2.download="chart.png";
+  a2.href=chartCanvas.toDataURL("image/png");
+  a2.click();
 }
 
 // 📄 PDF Export
@@ -290,12 +295,9 @@ async function downloadPDF(){
   const tableCanvas = await html2canvas(table,{scale:2,backgroundColor:"#fff"});
   const chartCanvas = await html2canvas(chart,{scale:2,backgroundColor:"#fff"});
 
-  const tImg = tableCanvas.toDataURL("image/png");
-  const cImg = chartCanvas.toDataURL("image/png");
-
-  pdf.addImage(tImg,"PNG",0,0,210,0);
+  pdf.addImage(tableCanvas.toDataURL("image/png"),"PNG",0,0,210,0);
   pdf.addPage();
-  pdf.addImage(cImg,"PNG",0,20,210,150);
+  pdf.addImage(chartCanvas.toDataURL("image/png"),"PNG",0,20,210,150);
 
   pdf.save("report.pdf");
 }
