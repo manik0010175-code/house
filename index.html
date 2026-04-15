@@ -27,12 +27,52 @@ body.exporting button, body.exporting select { display:none; }
 @media print {
   #monthPrint { display:block; }
 }
+
+/* 📱 Mobile Responsive */
+@media (max-width: 768px){
+
+  h2 { font-size:18px; text-align:center; }
+
+  .card { padding:8px; }
+
+  button {
+    width:100%;
+    margin:5px 0;
+    font-size:14px;
+  }
+
+  input {
+    font-size:14px;
+    height:32px;
+  }
+
+  table {
+    font-size:12px;
+  }
+
+  th, td {
+    padding:4px;
+  }
+
+  canvas {
+    width:100% !important;
+    height:auto !important;
+  }
+
+  .card table {
+    display:block;
+    overflow-x:auto;
+    white-space:nowrap;
+  }
+}
 </style>
 </head>
 <body>
+
 <div id="captureArea">
 
 <h2>💰 Expense Dashboard</h2>
+
 <div class="card" style="text-align:center;">
 <input type="month" id="monthPicker">
 <div id="monthPrint"></div>
@@ -79,6 +119,7 @@ body.exporting button, body.exporting select { display:none; }
 <div class="card">
 <canvas id="chart"></canvas>
 </div>
+
 </div>
 
 <script>
@@ -88,6 +129,7 @@ const tbody=document.getElementById("rows");
 // Month print
 const monthPicker=document.getElementById("monthPicker");
 const monthPrint=document.getElementById("monthPrint");
+
 monthPicker.addEventListener("change",()=>{
   const val=monthPicker.value;
   if(val){
@@ -95,6 +137,8 @@ monthPicker.addEventListener("change",()=>{
     const monthName=new Date(val+"-01").toLocaleString("default",{month:"long"});
     monthPrint.innerText=monthName+" "+y;
   } else { monthPrint.innerText=""; }
+
+  load(); // ✅ load per month
 });
 
 // Add row
@@ -142,7 +186,7 @@ function removeRow(){
   calculate(); save();
 }
 
-// Calculate totals
+// Calculate
 function calculate(){
   let t={family:0,car:0,my:0,her:0};
   cols.forEach(c=>{
@@ -162,19 +206,31 @@ function calculate(){
   chart.update();
 }
 
-// Save / Load
+// Save per month
 function save(){
   let data=[];
   document.querySelectorAll("#rows tr").forEach(tr=>{
     data.push([...tr.querySelectorAll("input")].map(i=>i.value));
   });
-  localStorage.setItem("data",JSON.stringify(data));
+
+  let key="data_"+(monthPicker.value || "default");
+  localStorage.setItem(key,JSON.stringify(data));
 }
 
+// Load per month
 function load(){
-  let d=JSON.parse(localStorage.getItem("data")||"[]");
-  if(d.length===0){ for(let i=0;i<8;i++) addRow(); }
-  else d.forEach(r=>addRow(r));
+  let key="data_"+(monthPicker.value || "default");
+  let d=JSON.parse(localStorage.getItem(key)||"[]");
+
+  tbody.innerHTML="";
+
+  if(d.length===0){
+    for(let i=0;i<8;i++) addRow();
+  } else {
+    d.forEach(r=>addRow(r));
+  }
+
+  calculate();
 }
 
 // IMAGE
@@ -218,7 +274,7 @@ let chart=new Chart(document.getElementById("chart"),{
 
 // Init
 load();
-calculate();
 </script>
+
 </body>
 </html>
