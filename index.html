@@ -132,7 +132,7 @@ th:nth-child(8), td:nth-child(8){
   }
 
   h2{
-    font-size:18px;
+    font-size:12px;
     text-align:center;
     margin:8px 0;
   }
@@ -202,6 +202,7 @@ button:active{
 <div id="captureArea">
 
 <h2>💰 Expense Dashboard</h2>
+<th>Amount ($)</th>
 
 <div class="card" style="text-align:center;">
 <input type="month" id="monthPicker">
@@ -223,10 +224,10 @@ button:active{
 <table>
 <thead>
 <tr>
-<th>Family</th><th>$</th>
-<th>Car</th><th>$</th>
-<th>My</th><th>$</th>
-<th>Her</th><th>$</th>
+<th>Family</th><th>AMOUNT</th>
+<th>Car</th><th>AMOUNT</th>
+<th>My</th><th>AMOUNT</th>
+<th>Her</th><th>AMOUNT</th>
 </tr>
 </thead>
 
@@ -444,7 +445,22 @@ function addRow(data=[]){
          i.classList.contains("my") ||
          i.classList.contains("her")){
 
-        i.value = i.value.replace(/[^0-9.]/g, '');
+        let val = i.value.replace(/[^0-9.]/g, '');
+val = val.replace(/(\..*)\./g, '$1');
+
+let parts = val.split(".");
+
+if(parts[1] && parts[1].length > 2){
+  parts[1] = parts[1].slice(0,2);
+}
+
+val = parts.join(".");
+
+if(val){
+  i.value = "$" + val;
+} else {
+  i.value = "";
+}
 
       } else {
 
@@ -476,10 +492,24 @@ function addRow(data=[]){
         target = currentRow.querySelectorAll("input")[colIndex - 1];
       }
 
-      if (e.key === "ArrowDown" || e.key === "Enter") {
-        const nextRow = allRows[rowIndex + 1];
-        if (nextRow) target = nextRow.querySelectorAll("input")[colIndex];
-      }
+    if (e.key === "ArrowDown" || e.key === "Enter") {
+  const nextRow = allRows[rowIndex + 1];
+
+  if (nextRow) {
+    target = nextRow.querySelectorAll("input")[colIndex];
+  } else {
+    addRow();
+
+    setTimeout(() => {
+      const newRows = tbody.querySelectorAll("tr");
+      const lastRow = newRows[newRows.length - 1];
+      target = lastRow.querySelectorAll("input")[colIndex];
+      if (target) target.focus();
+    }, 0);
+  }
+
+  e.preventDefault();
+}
 
       if (e.key === "ArrowUp") {
         const prevRow = allRows[rowIndex - 1];
@@ -584,22 +614,29 @@ function calculate(){
 
   cols.forEach(c=>{
     document.querySelectorAll("."+c).forEach(i=>{
-      t[c]+=parseFloat(i.value)||0;
+      t[c] += parseFloat(i.value.replace(/[^0-9.]/g,'')) || 0;
     });
   });
+t.family = Number(t.family.toFixed(2));
+t.car = Number(t.car.toFixed(2));
+t.my = Number(t.my.toFixed(2));
+t.her = Number(t.her.toFixed(2));
 
-  f.innerText="$"+t.family;
-  c.innerText="$"+t.car;
-  m.innerText="$"+t.my;
-  h.innerText="$"+t.her;
+let total = t.family + t.car + t.my + t.her;
+total = Number(total.toFixed(2));
 
-  let total=t.family+t.car+t.my+t.her;
-  g.innerText="$"+total;
-  w.innerText="$"+(total-t.car);
+f.innerText = t.family;
+c.innerText = t.car;
+m.innerText = t.my;
+h.innerText = t.her;
+
+g.innerText = total;
+w.innerText = (total - t.car).toFixed(2);
 
   chart.data.datasets[0].data=[t.family,t.car,t.my,t.her];
   chart.update();
 }
+
 
 // 💾 Save
 function save(){
