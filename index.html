@@ -119,6 +119,80 @@ th:nth-child(8), td:nth-child(8){
   max-width:1200px;
   margin:auto;
 }
+#captureArea{
+  width:1200px;
+  margin:auto;
+}
+/* 📱 MOBILE UI IMPROVEMENT */
+@media (max-width: 768px){
+
+  body{
+    padding:6px;
+    background:#f4f6fb;
+  }
+
+  h2{
+    font-size:18px;
+    text-align:center;
+    margin:8px 0;
+  }
+
+  .card{
+    padding:10px;
+    margin:6px 0;
+    border-radius:12px;
+    box-shadow:0 2px 6px rgba(0,0,0,0.06);
+  }
+
+  button{
+    width:100%;
+    margin:6px 0;
+    padding:12px;
+    font-size:14px;
+    border-radius:10px;
+  }
+
+  input{
+    height:34px;
+    font-size:14px;
+    border-radius:6px;
+  }
+
+  table{
+    font-size:11px;
+    min-width:750px;
+  }
+
+  th,td{
+    padding:4px;
+  }
+
+  #tableArea{
+    overflow-x:auto;
+    border-radius:10px;
+  }
+
+  #chartArea{
+    padding:10px;
+  }
+
+  canvas{
+    max-width:100%;
+  }
+
+  .sugbox{
+    font-size:12px;
+  }
+}
+button{
+  background:#007bff;
+  color:white;
+  transition:0.2s;
+}
+
+button:active{
+  transform:scale(0.97);
+}
 
 </style>
 </head>
