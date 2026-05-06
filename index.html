@@ -115,6 +115,11 @@ th:nth-child(8), td:nth-child(8){
 .sugbox div:hover{
   background:#eee;
 }
+#captureArea{
+  max-width:1200px;
+  margin:auto;
+}
+
 </style>
 </head>
 
@@ -129,12 +134,16 @@ th:nth-child(8), td:nth-child(8){
 </div>
 
 <div class="card" style="text-align:center;">
+  <button onclick="loadYearly()">📊 Yearly Statement</button>
 <button onclick="addRow()">➕ Add Row</button>
 <button onclick="removeRow()">➖ Remove Row</button>
 <button onclick="downloadImage()">📸 Download Images</button>
 <button onclick="downloadPDF()">📄 Download PDF</button>
 <button onclick="clearScreen()">🧹 Clear Screen</button>
 </div>
+
+<div id="yearResult"></div>
+<div id="monthDetails"></div>
 
 <div class="card" id="tableArea">
 <table>
@@ -173,11 +182,13 @@ th:nth-child(8), td:nth-child(8){
 </div>
 
 </div>
+<script src="https://cdn.jsdelivr.net/npm/jspdf-autotable"></script>
 
 <script>
 let history = JSON.parse(localStorage.getItem("suggest_history") || "[]");
 const cols=["family","car","my","her"];
 const tbody=document.getElementById("rows");
+const monthPicker = document.getElementById("monthPicker");
 
 const f = document.getElementById("f");
 const c = document.getElementById("c");
@@ -185,6 +196,153 @@ const m = document.getElementById("m");
 const h = document.getElementById("h");
 const g = document.getElementById("g");
 const w = document.getElementById("w");
+
+function getKey(){
+  if(!monthPicker.value){
+    let now = new Date();
+    return "exp_" + now.toISOString().slice(0,7);
+  }
+  return "exp_" + monthPicker.value;
+}
+function downloadYearPDF(){
+
+  const { jsPDF } = window.jspdf;
+  const pdf = new jsPDF();
+
+  let rows = [];
+  let grand = 0;
+
+  for(let i=0;i<localStorage.length;i++){
+    let key = localStorage.key(i);
+
+    if(key.startsWith("exp_")){
+      let month = key.replace("exp_","");
+      let data = JSON.parse(localStorage.getItem(key) || "[]");
+
+      let total = 0;
+
+      data.forEach(r=>{
+        total +=
+          (parseFloat(r[1])||0) +
+          (parseFloat(r[3])||0) +
+          (parseFloat(r[5])||0) +
+          (parseFloat(r[7])||0);
+      });
+
+      rows.push([month, "$" + total]);
+      grand += total;
+    }
+  }
+
+  pdf.setFontSize(16);
+  pdf.text("Yearly Report", 14, 15);
+
+  pdf.autoTable({
+    head: [["Month", "Total"]],
+    body: rows,
+    startY: 25,
+    theme: "striped"
+  });
+
+  pdf.text(`Grand Total: $${grand}`, 14, pdf.lastAutoTable.finalY + 10);
+
+  pdf.save("year-report.pdf");
+}
+
+function loadYearly(){
+  let yearly = {};
+  let grandTotal = 0;
+
+  for(let i=0;i<localStorage.length;i++){
+    let key = localStorage.key(i);
+
+    if(key.startsWith("exp_")){
+      let month = key.replace("exp_","");
+      let data = JSON.parse(localStorage.getItem(key) || "[]");
+
+      let total = 0;
+
+      data.forEach(row=>{
+        total +=
+          (parseFloat(row[1])||0) +
+          (parseFloat(row[3])||0) +
+          (parseFloat(row[5])||0) +
+          (parseFloat(row[7])||0);
+      });
+
+      yearly[month] = total;
+      grandTotal += total;
+    }
+  }
+
+  let html = `<h3>📊 Yearly Summary</h3>`;
+
+ Object.keys(yearly).sort().forEach(month=>{
+  html += `
+    <div style="padding:10px;margin:5px;border:1px solid #ccc;">
+      📅 ${month} → $${yearly[month]}
+
+      <button onclick="downloadMonthPDF('${month}')">
+        📄 Download Month PDF
+      </button>
+    </div>
+  `;
+});
+
+  html += `
+    <hr>
+    <h3>💰 Grand Total: $${grandTotal}</h3>
+
+    <button onclick="downloadYearPDF()">
+      📄 Download Year PDF
+    </button>
+  `;
+
+  document.getElementById("yearResult").innerHTML = html;
+}
+window.downloadMonthPDF = function(month){
+
+  const { jsPDF } = window.jspdf;
+  const pdf = new jsPDF();
+
+  let data = JSON.parse(localStorage.getItem("exp_" + month) || "[]");
+
+  let rows = [];
+  let total = 0;
+
+  data.forEach(r => {
+    rows.push([
+      r[0] || "",
+      r[1] || "",
+      r[2] || "",
+      r[3] || "",
+      r[4] || "",
+      r[5] || "",
+      r[6] || "",
+      r[7] || ""
+    ]);
+
+    total +=
+      (parseFloat(r[1])||0) +
+      (parseFloat(r[3])||0) +
+      (parseFloat(r[5])||0) +
+      (parseFloat(r[7])||0);
+  });
+
+  pdf.setFontSize(16);
+  pdf.text("Monthly Report - " + month, 14, 15);
+
+  pdf.autoTable({
+    head: [["Note","Family","Note","Car","Note","My","Note","Her"]],
+    body: rows,
+    startY: 25,
+    theme: "grid"
+  });
+
+  pdf.text("Total: $" + total, 14, pdf.lastAutoTable.finalY + 10);
+
+  pdf.save(month + ".pdf");
+}
 
 // ➕ Add Row
 function addRow(data=[]){
@@ -294,6 +452,15 @@ function saveHistory(value){
     localStorage.setItem("suggest_history", JSON.stringify(history));
   }
 }
+let saveTimer;
+
+function delayedSave(value){
+  clearTimeout(saveTimer);
+
+  saveTimer = setTimeout(() => {
+    saveHistory(value);
+  }, 800);
+}
 function showSuggestions(input){
   let box = input.parentElement.querySelector(".sugbox");
 
@@ -363,15 +530,18 @@ function calculate(){
 // 💾 Save
 function save(){
   let data = [];
+
   document.querySelectorAll("#rows tr").forEach(tr=>{
     data.push([...tr.querySelectorAll("input")].map(i=>i.value));
   });
-  localStorage.setItem("exp_data", JSON.stringify(data));
+
+  localStorage.setItem(getKey(), JSON.stringify(data));
 }
 
 // 📥 Load
 function load(){
-  let data = JSON.parse(localStorage.getItem("exp_data") || "[]");
+
+  let data = JSON.parse(localStorage.getItem(getKey()) || "[]");
 
   tbody.innerHTML = "";
 
@@ -392,13 +562,21 @@ async function downloadImage(){
   const table = document.getElementById("tableArea");
   const chart = document.getElementById("chartArea");
 
-  await new Promise(r=>setTimeout(r,250));
+  await new Promise(r=>setTimeout(r,300));
 
-  const tableCanvas = await html2canvas(table,{scale:2,backgroundColor:"#fff"});
+  const tableCanvas = await html2canvas(table,{
+    scale:2,
+    backgroundColor:"#fff",
+    width:1200
+  });
 
-  await new Promise(r=>setTimeout(r,250));
+  await new Promise(r=>setTimeout(r,300));
 
-  const chartCanvas = await html2canvas(chart,{scale:2,backgroundColor:"#fff"});
+  const chartCanvas = await html2canvas(chart,{
+    scale:2,
+    backgroundColor:"#fff",
+    width:1200
+  });
 
   document.body.classList.remove("exporting");
 
@@ -416,7 +594,7 @@ async function downloadImage(){
 }
 
 // 📄 PDF Export
-async function downloadPDF(){
+window.downloadPDF = async function(){
 
   const { jsPDF } = window.jspdf;
   const pdf=new jsPDF("p","mm","a4");
@@ -424,12 +602,30 @@ async function downloadPDF(){
   const table = document.getElementById("tableArea");
   const chart = document.getElementById("chartArea");
 
-  const tableCanvas = await html2canvas(table,{scale:2,backgroundColor:"#fff"});
-  const chartCanvas = await html2canvas(chart,{scale:2,backgroundColor:"#fff"});
+  const tableCanvas = await html2canvas(table,{
+    scale:2,
+    backgroundColor:"#fff",
+    width:1200
+  });
 
-  pdf.addImage(tableCanvas.toDataURL("image/png"),"PNG",0,0,210,0);
+  const chartCanvas = await html2canvas(chart,{
+    scale:2,
+    backgroundColor:"#fff",
+    width:1200
+  });
+
+  const imgWidth = 210;
+  const pageHeight = 297;
+
+  let imgHeight = tableCanvas.height * imgWidth / tableCanvas.width;
+
+  pdf.addImage(tableCanvas.toDataURL("image/png"),"PNG",0,0,imgWidth,imgHeight);
+
   pdf.addPage();
-  pdf.addImage(chartCanvas.toDataURL("image/png"),"PNG",0,20,210,150);
+
+  imgHeight = chartCanvas.height * imgWidth / chartCanvas.width;
+
+  pdf.addImage(chartCanvas.toDataURL("image/png"),"PNG",0,20,imgWidth,imgHeight);
 
   pdf.save("report.pdf");
 }
@@ -457,19 +653,25 @@ function clearScreen(){
   chart.data.datasets[0].data = [0,0,0,0];
   chart.update();
 
-  // 5️⃣ focus first input
+  // 5️⃣ localStorage clear (IMPORTANT)
+  //localStorage.removeItem("exp_data");
+
+// 5️⃣ localStorage clear (FIXED)
+localStorage.removeItem(getKey());
+
+  // 6️⃣ focus first input
   let first = document.querySelector("input");
   if(first) first.focus();
 }
-let saveTimer;
+let now = new Date();
+monthPicker.value = now.toISOString().slice(0,7);
 
-function delayedSave(value){
-  clearTimeout(saveTimer);
+monthPicker.addEventListener("change", () => {
+  load();
+  calculate();
+  window.scrollTo(0,0); // চাইলে রাখতে পারো
+});
 
-  saveTimer = setTimeout(() => {
-    saveHistory(value);
-  }, 800); // 0.8 sec typing stop হলে save হবে
-}
 // 📊 Chart
 let chart=new Chart(document.getElementById("chart"),{
   type:"doughnut",
