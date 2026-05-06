@@ -77,6 +77,44 @@ canvas{
 body.exporting button{
   display:none;
 }
+th:nth-child(1), td:nth-child(1){
+  width:25%;
+}
+
+th:nth-child(3), td:nth-child(3){
+  width:15%;
+}
+
+th:nth-child(5), td:nth-child(5){
+  width:15%;
+}
+
+th:nth-child(7), td:nth-child(7){
+  width:15%;
+}
+
+th:nth-child(2), td:nth-child(2),
+th:nth-child(4), td:nth-child(4),
+th:nth-child(6), td:nth-child(6),
+th:nth-child(8), td:nth-child(8){
+  width:7.5%;
+}
+.sugbox{
+  background:#fff;
+  border:1px solid #ccc;
+  font-size:13px;
+  position:absolute;
+  z-index:10;
+}
+
+.sugbox div{
+  padding:4px;
+  cursor:pointer;
+}
+
+.sugbox div:hover{
+  background:#eee;
+}
 </style>
 </head>
 
@@ -95,6 +133,7 @@ body.exporting button{
 <button onclick="removeRow()">➖ Remove Row</button>
 <button onclick="downloadImage()">📸 Download Images</button>
 <button onclick="downloadPDF()">📄 Download PDF</button>
+<button onclick="clearScreen()">🧹 Clear Screen</button>
 </div>
 
 <div class="card" id="tableArea">
@@ -136,19 +175,26 @@ body.exporting button{
 </div>
 
 <script>
-
+let history = JSON.parse(localStorage.getItem("suggest_history") || "[]");
 const cols=["family","car","my","her"];
 const tbody=document.getElementById("rows");
+
+const f = document.getElementById("f");
+const c = document.getElementById("c");
+const m = document.getElementById("m");
+const h = document.getElementById("h");
+const g = document.getElementById("g");
+const w = document.getElementById("w");
 
 // ➕ Add Row
 function addRow(data=[]){
   let tr=document.createElement("tr");
 
   tr.innerHTML=`
-<td><input></td><td><input class="family"></td>
-<td><input></td><td><input class="car"></td>
-<td><input></td><td><input class="my"></td>
-<td><input></td><td><input class="her"></td>
+<td><input class="note" data-hint="Date / Note"></td><td><input class="family"></td>
+<td><input class="note" data-hint="Date / Note"></td><td><input class="car"></td>
+<td><input class="note" data-hint="Date / Note"></td><td><input class="my"></td>
+<td><input class="note" data-hint="Date / Note"></td><td><input class="her"></td>
 `;
 
   tbody.appendChild(tr);
@@ -160,12 +206,27 @@ function addRow(data=[]){
     if (data[idx]) i.value = data[idx];
 
     i.addEventListener("input", () => {
-      i.value = i.value.replace(/[^0-9.]/g, '');
+
+      if(i.classList.contains("family") ||
+         i.classList.contains("car") ||
+         i.classList.contains("my") ||
+         i.classList.contains("her")){
+
+        i.value = i.value.replace(/[^0-9.]/g, '');
+
+      } else {
+
+        i.value = autoYear(i.value);
+
+        delayedSave(i.value);
+        showSuggestions(i);
+      }
+
       calculate();
       save();
     });
 
-    // ⌨️ Keyboard navigation (UNCHANGED)
+    // ⌨️ Keyboard navigation (এটা এখানেই থাকবে)
     i.addEventListener("keydown", (e) => {
 
       const currentRow = i.closest("tr");
@@ -202,6 +263,72 @@ function addRow(data=[]){
 
   });
 }
+function autoYear(val){
+  let now = new Date();
+  let year = now.getFullYear();
+
+  // 5-10 / 05/10 match করবে
+  let match = val.match(/^(\d{1,2})[-\/](\d{1,2})(.*)/);
+
+  if(match){
+    let m = match[1].padStart(2,'0');
+    let d = match[2].padStart(2,'0');
+    let rest = match[3] || "";
+
+    return `${year}-${m}-${d}${rest}`;
+  }
+
+  return val;
+}
+function saveHistory(value){
+  if(!value) return;
+
+  value = value.trim();
+
+  if(value === "Date / Note") return;
+  if(/^[0-9.]+$/.test(value)) return;
+  if(value.length < 3) return;
+
+  if(!history.includes(value)){
+    history.push(value);
+    localStorage.setItem("suggest_history", JSON.stringify(history));
+  }
+}
+function showSuggestions(input){
+  let box = input.parentElement.querySelector(".sugbox");
+
+  if(!box){
+    box = document.createElement("div");
+    box.className = "sugbox";
+    input.parentElement.style.position = "relative";
+    input.parentElement.appendChild(box);
+  }
+
+  let val = input.value.trim().toLowerCase();
+
+  box.innerHTML = "";
+
+  if(val.length < 1) return;
+
+  history
+    .filter(v =>
+      v &&
+      v.toLowerCase().startsWith(val)
+    )
+    .slice(0,5)
+    .forEach(v=>{
+      let d = document.createElement("div");
+      d.innerText = v;
+
+      d.onclick = () => {
+        input.value = v;
+        input.dispatchEvent(new Event("input"));
+        box.innerHTML = "";
+      };
+
+      box.appendChild(d);
+    });
+}
 
 // ➖ Remove Row
 function removeRow(){
@@ -235,20 +362,25 @@ function calculate(){
 
 // 💾 Save
 function save(){
-  let data=[];
+  let data = [];
   document.querySelectorAll("#rows tr").forEach(tr=>{
     data.push([...tr.querySelectorAll("input")].map(i=>i.value));
   });
-  localStorage.setItem("exp",JSON.stringify(data));
+  localStorage.setItem("exp_data", JSON.stringify(data));
 }
 
 // 📥 Load
 function load(){
-  let d=JSON.parse(localStorage.getItem("exp")||"[]");
-  tbody.innerHTML="";
-  if(d.length===0){
+  let data = JSON.parse(localStorage.getItem("exp_data") || "[]");
+
+  tbody.innerHTML = "";
+
+  if(data.length === 0){
     for(let i=0;i<6;i++) addRow();
-  } else d.forEach(r=>addRow(r));
+  } else {
+    data.forEach(r => addRow(r));
+  }
+
   calculate();
 }
 
@@ -301,7 +433,43 @@ async function downloadPDF(){
 
   pdf.save("report.pdf");
 }
+function clearScreen(){
 
+  // 1️⃣ সব input clear
+  document.querySelectorAll("input").forEach(i=>{
+    i.value = "";
+  });
+
+  // 2️⃣ suggestion box remove
+  document.querySelectorAll(".sugbox").forEach(box=>{
+    box.remove();
+  });
+
+  // 3️⃣ totals reset
+  f.innerText = "$0";
+  c.innerText = "$0";
+  m.innerText = "$0";
+  h.innerText = "$0";
+  g.innerText = "$0";
+  w.innerText = "$0";
+
+  // 4️⃣ chart reset
+  chart.data.datasets[0].data = [0,0,0,0];
+  chart.update();
+
+  // 5️⃣ focus first input
+  let first = document.querySelector("input");
+  if(first) first.focus();
+}
+let saveTimer;
+
+function delayedSave(value){
+  clearTimeout(saveTimer);
+
+  saveTimer = setTimeout(() => {
+    saveHistory(value);
+  }, 800); // 0.8 sec typing stop হলে save হবে
+}
 // 📊 Chart
 let chart=new Chart(document.getElementById("chart"),{
   type:"doughnut",
